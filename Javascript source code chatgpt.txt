@@ -1,0 +1,123 @@
+const chatInput=document.querySelector("#chat-input");
+const sendButton=document.querySelector("#send-btn");
+const chatcontainer=document.querySelector(".chat-container");
+let usertxt=null;
+const themebutton=document.querySelector("#theme-btn");
+const deletebutton=document.querySelector("#delete-btn");
+const API_KEY="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";
+
+const initialHeight=chatInput.scrollHeight;
+const loadDataFromLocalstorage=()=>{
+    const themecolor=localStorage.getItem("theme-color");
+    const defaulttext=`<div class="default-text">
+                            <h1>ChatGpt Clone</h1>
+                            <p>Start a conversation and explore the power of AI.<br>Your chat history will be displayed here.</p>
+                        </div>`
+    chatcontainer.innerHTML=localStorage.getItem("all-chats")||defaulttext;
+    chatcontainer.scrollTo(0,chatcontainer.scrollHeight);
+}
+loadDataFromLocalstorage();
+const createelement=(html,className)=>{
+    const chatdiv=document.createElement("div");
+    chatdiv.classList.add("chat",className);
+    chatdiv.innerHTML=html;
+    return chatdiv;
+}
+const getchatresponse = async (ingoingchatdiv) => {
+    const API_URL="https://api.openai.com/v1/chat/completions";
+    const pelemnt=document.createElement("p");
+    const requestOption={
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json",
+            "Authorization":`Bearer ${API_KEY}`
+
+        },
+        body:JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages:[{role:"user",content:usertxt}]
+
+        })
+    }
+    try{
+        const response=await(await fetch(API_URL, requestOption)).json();
+        pelemnt.textContent=response.choices[0].message.content;
+    }catch(error)
+    {
+        pelemnt.classList.add("error");
+        pelemnt.textContent="Oops! Something went wrong i cant understand your input ";
+    }
+    ingoingchatdiv.querySelector(".typing-animation").remove();
+    ingoingchatdiv.querySelector(".chat-details").appendChild(pelemnt);
+    localStorage.setItem("all-chats",chatcontainer.innerHTML);
+}
+
+const copyResponse = (copyBtn) => {
+    const responseTextElement = copyBtn.parentElement.querySelector("p");
+    navigator.clipboard.writeText(responseTextElement.textContent);
+    copyBtn.textContent = "done";
+    setTimeout(() => copyBtn.textContent = "content_copy", 1000);
+}
+
+const showTypingAnimation=()=>{
+    const html=` <div class="chat-content">
+    <div class="chat-details">
+      <img src="chatbot.jpg" alt="chatbot">
+        <div class="typing-animation">
+           <div class="typing-dot" style="--delay:0.2s"></div>
+           <div class="typing-dot" style="--delay:0.3s"></div>
+           <div class="typing-dot" style="--delay:0.4s"></div>
+        </div>
+    </div>
+    <span onclick="copyResponse(this)" class="material-symbols-rounded">content_copy</span>
+  </div>`
+  const ingoingchatdiv=createelement(html,"incoming");
+  chatcontainer.appendChild(ingoingchatdiv);
+  chatcontainer.scrollTo(0,chatcontainer.scrollHeight);
+  getchatresponse(ingoingchatdiv);
+}
+const handleoutgoingchat=()=>{
+    usertxt=chatInput.value.trim();
+    if(!usertxt) return;
+    chatInput.value="";
+    chatInput.style.height=`${initialHeight}px`;
+    const html=`<div class="chat-content">
+    <div class="chat-details">
+      <img src="user.jpg" alt="user-img">
+      <p></p>
+    </div>
+  </div>`
+  const outgoingchatdiv=createelement(html,"outgoing");
+  outgoingchatdiv.querySelector("p").textContent=usertxt;
+  document.querySelector(".default-text")?.remove();
+  chatcontainer.appendChild(outgoingchatdiv);
+  chatcontainer.scrollTo(0,chatcontainer.scrollHeight);
+  setTimeout(showTypingAnimation,500);
+}
+themebutton.addEventListener("click",()=>{
+      document.body.classList.toggle("light-mode");
+      localStorage.setItem("theme-color",themebutton.innerText);
+    themebutton.innerText=document.body.classList.contains("light-mode")?"dark_mode":"light_mode";
+});   
+
+deletebutton.addEventListener("click",()=>{
+    if(confirm("Are you sure want to delete all the chats?")){
+        localStorage.removeItem("all-chats");
+        loadDataFromLocalstorage();
+    }
+});
+
+
+chatInput.addEventListener("input",()=>{
+    chatInput.style.height=`${initialHeight}px`;
+    chatInput.style.height=`${chatInput.scrollHeight}px`;
+});
+
+
+chatInput.addEventListener("keydown",(e)=>{
+    if(e.key==="Enter" && !e.shiftKey && window.innerWidth>800){
+        e.preventDefault();
+        handleoutgoingchat();
+    }
+})
+sendButton.addEventListener("click",handleoutgoingchat);
